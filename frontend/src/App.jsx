@@ -9,6 +9,7 @@ import ServerUnavailable from "./components/ui/ServerUnavailable";
 import Dashboard from "./pages/Dashboard";
 import MyTasks from "./pages/MyTasks";
 import Calendar from "./pages/Calendar";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -43,6 +44,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="tasks" element={<MyTasks />} />
           <Route path="calendar" element={<Calendar />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Route>
 
