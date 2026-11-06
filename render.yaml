@@ -1,0 +1,31 @@
+# Render blueprint for the API. In Render: New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: tasknix-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    # npx so we don't need pnpm installed globally; --prod skips dev tools like eslint
+    buildCommand: npx --yes pnpm@10.29.3 install --frozen-lockfile --prod
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGO_URI
+        sync: false # paste your MongoDB Atlas connection string in the dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_URL
+        sync: false # e.g. https://tasknix.vercel.app
+      # proxies between the browser and the app: Vercel's rewrite plus Render's own.
+      # check it once after deploying, see docs/DEPLOYMENT.md
+      - key: TRUST_PROXY
+        value: "4"
+      # the free plan sleeps when idle, so the demo account gets reset on each wake up
+      - key: RESET_DEMO_ON_START
+        value: "true"
