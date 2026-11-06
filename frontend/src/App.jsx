@@ -7,6 +7,7 @@ import GuestRoute from "./components/auth/GuestRoute";
 import FullPageLoader from "./components/ui/FullPageLoader";
 import ServerUnavailable from "./components/ui/ServerUnavailable";
 import Dashboard from "./pages/Dashboard";
+import MyTasks from "./pages/MyTasks";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -39,6 +40,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="tasks" element={<MyTasks />} />
         </Route>
       </Route>
 
