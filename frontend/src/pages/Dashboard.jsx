@@ -1,275 +1,165 @@
-import { useState } from "react";
-import CreateTaskModal from "../components/ui/CreateTaskModal";
-import TaskTable from "../components/ui/TaskTable";
-import {
-  CheckCircle2,
-  Clock3,
-  ListTodo,
-  AlertCircle,
-  ArrowUpRight,
-} from "lucide-react";
-
-function StatCard({ stat }) {
-  const Icon = stat.icon;
-
-  return (
-    <div className="bg-white p-6 rounded-xl border border-gray-100">
-      <div className="flex items-center justify-between">
-        <div
-          className={`w-11 h-11 rounded-lg flex items-center justify-center ${stat.iconBg}`}
-        >
-          <Icon size={22} className={stat.iconColor} />
-        </div>
-
-        <ArrowUpRight size={18} className="text-gray-400" />
-      </div>
-
-      <p className="text-sm text-gray-500 mt-5">{stat.title}</p>
-
-      <h3 className="text-3xl font-bold text-gray-800 mt-1">{stat.value}</h3>
-
-      <p className="text-xs text-gray-400 mt-2">
-        <span className="text-green-600 font-medium">{stat.change}</span>{" "}
-        {stat.description}
-      </p>
-    </div>
-  );
-}
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router";
+import { useDispatch, useSelector } from "react-redux";
+import { AlertCircle, CheckCircle2, ClipboardList, Clock3, ListTodo, Plus } from "lucide-react";
+import StatCard from "../components/dashboard/StatCard";
+import ProgressCard from "../components/dashboard/ProgressCard";
+import RecentActivity from "../components/dashboard/RecentActivity";
+import TaskTable from "../components/tasks/TaskTable";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
+import ErrorState from "../components/ui/ErrorState";
+import RefreshError from "../components/ui/RefreshError";
+import useTaskActions from "../hooks/useTaskActions";
+import useDocumentTitle from "../hooks/useDocumentTitle";
+import { fetchRecentTasks, resetFilters, showTasks } from "../redux/slices/taskSlice";
+import { fetchActivity } from "../redux/slices/activitySlice";
 
 function Dashboard() {
-  const [tasks, setTasks] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  // Calculate task statistics
-  const totalTasks = tasks.length;
+  useDocumentTitle("Dashboard");
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const stats = useSelector((state) => state.tasks.stats);
+  const recent = useSelector((state) => state.tasks.recent);
+  const activity = useSelector((state) => state.activity);
+  const version = useSelector((state) => state.tasks.version);
+  const { openCreate, openEdit, requestDelete, toggleComplete, modals } = useTaskActions();
 
-  const completedTasks = tasks.filter(
-    (task) => task.status === "Completed"
-  ).length;
+  useEffect(() => {
+    const recentRequest = dispatch(fetchRecentTasks());
+    const activityRequest = dispatch(fetchActivity(6));
+    return () => {
+      recentRequest.abort();
+      activityRequest.abort();
+    };
+  }, [dispatch, version]);
 
-  const inProgressTasks = tasks.filter(
-    (task) => task.status === "In Progress"
-  ).length;
+  const openTaskList = (filters) => {
+    dispatch(showTasks(filters));
+    navigate("/tasks");
+  };
 
-  const pendingTasks = tasks.filter((task) => task.status === "Pending").length;
+  const data = stats.data;
+  const statsLoading = !data && stats.status !== "failed";
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date();
-  const todayString = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("-");
-
-  const overdueTasks = tasks.filter(
-    (task) => task.dueDate < todayString && task.status !== "Completed"
-  ).length;
-
-  const stats = [
+  const cards = [
     {
       title: "Total Tasks",
-      value: totalTasks,
-      change: "",
-      description: "total tasks created",
+      value: data?.total,
+      description: `${data?.byStatus.Pending ?? 0} still pending`,
       icon: ListTodo,
       iconBg: "bg-indigo-50",
       iconColor: "text-indigo-600",
+      filters: {},
     },
     {
       title: "Completed",
-      value: completedTasks,
-      change: "",
-      description: "tasks completed",
+      value: data?.byStatus.Completed,
+      description: `${data?.completionRate ?? 0}% of all tasks`,
       icon: CheckCircle2,
       iconBg: "bg-green-50",
       iconColor: "text-green-600",
+      filters: { status: "Completed" },
     },
     {
       title: "In Progress",
-      value: inProgressTasks,
-      change: "",
+      value: data?.byStatus["In Progress"],
       description: "currently active",
       icon: Clock3,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-600",
+      filters: { status: "In Progress" },
     },
     {
       title: "Overdue",
-      value: overdueTasks,
-      change: "",
-      description: "past due date",
+      value: data?.overdue,
+      description: data?.dueToday ? `${data.dueToday} more due today` : "past their due date",
       icon: AlertCircle,
       iconBg: "bg-red-50",
       iconColor: "text-red-600",
+      filters: { overdue: true },
     },
   ];
-  const handleSaveTask = (taskData) => {
-    if (editingTask) {
-      // Update existing task
-      setTasks((prevTasks) =>
-        prevTasks.map((task) => (task.id === taskData.id ? taskData : task))
-      );
-    } else {
-      // Create new task
-      setTasks((prevTasks) => [taskData, ...prevTasks]);
-    }
 
-    setEditingTask(null);
-  };
-
-  const handleEditTask = (task) => {
-    setEditingTask(task);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingTask(null);
-  };
-
-  const handleDeleteTask = (taskId) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
-  };
+  const recentLoading = recent.status !== "succeeded" && recent.status !== "failed";
 
   return (
-    <div className="space-y-8">
-      {/* Page heading */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Track your productivity and manage your work.
-        </p>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {stats.map((stat) => (
-          <StatCard key={stat.title} stat={stat} />
+    <div className="space-y-6 lg:space-y-8">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+        {cards.map(({ filters, ...card }) => (
+          <StatCard
+            key={card.title}
+            {...card}
+            isLoading={statsLoading}
+            onClick={() => openTaskList(filters)}
+          />
         ))}
       </div>
 
-      {/* Progress and activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Progress card */}
-        <div className="lg:col-span-1 bg-white p-6 rounded-xl border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-800">Task Progress</h2>
+        <ProgressCard stats={data} isLoading={statsLoading} />
+        <RecentActivity
+          className="lg:col-span-2"
+          items={activity.items}
+          status={activity.status}
+          error={activity.error}
+          onRetry={() => dispatch(fetchActivity(6))}
+        />
+      </div>
 
-          <p className="text-sm text-gray-400 mt-1">
-            Your overall task completion
-          </p>
-
-          <div className="mt-8 flex items-center justify-center">
-            <div className="w-40 h-40 rounded-full border-[12px] border-indigo-100 flex items-center justify-center relative">
-              <div className="text-center">
-                <h3 className="text-3xl font-bold text-gray-800">
-                  {totalTasks === 0
-                    ? 0
-                    : Math.round((completedTasks / totalTasks) * 100)}
-                  %
-                </h3>
-                <p className="text-xs text-gray-400">Completed</p>
-              </div>
-            </div>
+      <section className="bg-white rounded-xl border border-gray-100">
+        <div className="p-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Recent Tasks</h2>
+            <p className="text-sm text-gray-400 mt-1">The last few tasks you added</p>
           </div>
-
-          <div className="mt-8 space-y-4">
-            <ProgressItem
-              label="Completed"
-              value={completedTasks}
-              color="bg-green-500"
-            />
-
-            <ProgressItem
-              label="In Progress"
-              value={inProgressTasks}
-              color="bg-blue-500"
-            />
-
-            <ProgressItem
-              label="Pending"
-              value={pendingTasks}
-              color="bg-gray-300"
-            />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/tasks"
+              onClick={() => dispatch(resetFilters())}
+              className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-800"
+            >
+              View all
+            </Link>
+            <Button onClick={() => openCreate()}>
+              <Plus size={16} />
+              Add Task
+            </Button>
           </div>
         </div>
 
-        {/* Recent activity */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-100">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                Recent Activity
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">
-                Your latest workspace activity
-              </p>
-            </div>
-          </div>
+        {recent.status === "failed" && recent.items.length > 0 && (
+          <RefreshError onRetry={() => dispatch(fetchRecentTasks())} />
+        )}
 
-          <div className="mt-6 space-y-6">
-            <ActivityItem
-              title="Completed API integration"
-              time="2 hours ago"
-              color="bg-green-500"
-            />
-            <ActivityItem
-              title="Updated dashboard design"
-              time="Yesterday"
-              color="bg-blue-500"
-            />
-            <ActivityItem
-              title="Created authentication flow"
-              time="2 days ago"
-              color="bg-indigo-500"
-            />
-            <ActivityItem
-              title="Added task filtering"
-              time="3 days ago"
-              color="bg-orange-500"
-            />
-          </div>
-        </div>
-      </div>
+        {recent.status === "failed" && recent.items.length === 0 ? (
+          <ErrorState message={recent.error} onRetry={() => dispatch(fetchRecentTasks())} />
+        ) : (
+          <TaskTable
+            tasks={recent.items}
+            isLoading={recentLoading && recent.items.length === 0}
+            isRefreshing={recentLoading && recent.items.length > 0}
+            onEditTask={openEdit}
+            onDeleteTask={requestDelete}
+            onToggleComplete={toggleComplete}
+            emptyState={
+              <EmptyState
+                icon={ClipboardList}
+                title="No tasks yet"
+                description="Create your first task and it will show up here."
+                action={
+                  <Button onClick={() => openCreate()}>
+                    <Plus size={16} />
+                    Create a task
+                  </Button>
+                }
+              />
+            }
+          />
+        )}
+      </section>
 
-      <TaskTable
-        tasks={tasks}
-        onAddTask={() => setIsModalOpen(true)}
-        onEditTask={handleEditTask}
-        onDeleteTask={handleDeleteTask}
-      />
-
-      <CreateTaskModal
-        key={editingTask ? editingTask.id : "new"}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSave={handleSaveTask}
-        editingTask={editingTask}
-      />
-    </div>
-  );
-}
-
-function ProgressItem({ label, value, color }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <div className="flex items-center gap-2 text-gray-600">
-        <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-        {label}
-      </div>
-      <span className="font-semibold text-gray-700">{value}</span>
-    </div>
-  );
-}
-
-function ActivityItem({ title, time, color }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className={`w-2.5 h-2.5 rounded-full mt-1.5 ${color}`} />
-
-      <div>
-        <p className="text-sm font-medium text-gray-700">{title}</p>
-        <p className="text-xs text-gray-400 mt-1">{time}</p>
-      </div>
+      {modals}
     </div>
   );
 }
