@@ -30,10 +30,10 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
-    // tokens issued before this are rejected (see middleware/auth.js)
-    passwordChangedAt: {
-      type: Date,
-      select: false,
+    // goes up when the password changes; tokens with an older version are rejected
+    tokenVersion: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema(
       transform: (_doc, ret) => {
         delete ret._id;
         delete ret.password;
-        delete ret.passwordChangedAt;
+        delete ret.tokenVersion;
         return ret;
       },
     },
@@ -58,12 +58,6 @@ userSchema.pre("save", async function () {
 
 userSchema.methods.comparePassword = function (candidate) {
   return bcrypt.compare(candidate, this.password);
-};
-
-// iat is in seconds (JWT), passwordChangedAt is a Date
-userSchema.methods.changedPasswordAfter = function (iat) {
-  if (!this.passwordChangedAt) return false;
-  return iat * 1000 < this.passwordChangedAt.getTime();
 };
 
 module.exports = mongoose.model("User", userSchema);

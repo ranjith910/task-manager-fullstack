@@ -158,6 +158,21 @@ describe("GET /api/tasks", () => {
     );
   });
 
+  it("sorts titles A to Z ignoring case", async () => {
+    await createTask(agent, { title: "apple pie recipe" });
+    await createTask(agent, { title: "Zoom call notes" });
+
+    const res = await agent.get("/api/tasks?sort=title&limit=20").expect(200);
+    assert.deepEqual(titles(res), [
+      "apple pie recipe",
+      "Deploy (prod)",
+      "Fix login bug",
+      "Old done task",
+      "Write docs",
+      "Zoom call notes",
+    ]);
+  });
+
   it("rejects invalid query params", async () => {
     await agent.get("/api/tasks?limit=1000").expect(400);
     await agent.get("/api/tasks?sort=password").expect(400);

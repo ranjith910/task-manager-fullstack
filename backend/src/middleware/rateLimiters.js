@@ -1,9 +1,10 @@
 const { rateLimit } = require("express-rate-limit");
 const env = require("../config/env");
 
+// each page view is a few requests, and every change refetches what's on screen
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 500,
+  limit: 1000,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   skip: () => env.isTest,

@@ -13,8 +13,9 @@ const toMs = (value) => {
 
 const maxAge = toMs(env.JWT_EXPIRES_IN);
 
-const signToken = (userId) =>
-  jwt.sign({ sub: String(userId) }, env.JWT_SECRET, {
+// ver = the user's tokenVersion, so changing the password can invalidate old tokens
+const signToken = (user) =>
+  jwt.sign({ sub: String(user._id), ver: user.tokenVersion ?? 0 }, env.JWT_SECRET, {
     algorithm: "HS256",
     expiresIn: Math.floor(maxAge / 1000),
   });
@@ -30,8 +31,8 @@ const cookieOptions = {
   path: "/",
 };
 
-const setAuthCookie = (res, userId) => {
-  res.cookie(COOKIE_NAME, signToken(userId), { ...cookieOptions, maxAge });
+const setAuthCookie = (res, user) => {
+  res.cookie(COOKIE_NAME, signToken(user), { ...cookieOptions, maxAge });
 };
 
 const clearAuthCookie = (res) => {

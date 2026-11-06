@@ -30,13 +30,14 @@ const protect = async (req, _res, next) => {
     );
   }
 
-  const user = await User.findById(payload.sub).select("+passwordChangedAt");
+  const user = await User.findById(payload.sub);
   if (!user) {
     throw new AppError(401, "User no longer exists");
   }
 
-  if (user.changedPasswordAfter(payload.iat)) {
-    throw new AppError(401, "Password was changed, please log in again");
+  // tokens from before the last password change carry an older version
+  if ((payload.ver ?? 0) !== user.tokenVersion) {
+    throw new AppError(401, "Your password was changed, please log in again");
   }
 
   req.user = user;

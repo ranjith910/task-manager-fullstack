@@ -152,9 +152,6 @@ describe("PATCH /api/auth/password", () => {
       .send({ email: credentials.email, password: credentials.password })
       .expect(200);
 
-    // JWT iat only has 1 second precision
-    await new Promise((resolve) => setTimeout(resolve, 1100));
-
     await agent
       .patch("/api/auth/password")
       .send({ currentPassword: credentials.password, newPassword: "newpassword1" })
@@ -165,7 +162,40 @@ describe("PATCH /api/auth/password", () => {
 
     await request(app)
       .post("/api/auth/login")
+      .send({ email: credentials.email, password: credentials.password })
+      .expect(401);
+    await request(app)
+      .post("/api/auth/login")
       .send({ email: credentials.email, password: "newpassword1" })
       .expect(200);
+  });
+
+  it("measures the 72 character limit in bytes", async () => {
+    const { agent, credentials } = await createLoggedInUser();
+    // 30 emoji = 120 bytes, bcrypt would silently ignore most of it
+    const tooLong = `a1${"😀".repeat(30)}`;
+
+    const res = await agent
+      .patch("/api/auth/password")
+      .send({ currentPassword: credentials.password, newPassword: tooLong })
+      .expect(400);
+
+    assert.equal(res.body.errors[0].message, "Password is too long");
+  });
+});
+
+describe("demo account", () => {
+  it("can be used but not changed", async () => {
+    const { agent } = await createLoggedInUser({ email: "demo@tasknix.app" });
+
+    await agent.get("/api/tasks").expect(200);
+
+    const profile = await agent.patch("/api/auth/me").send({ name: "Hacker" }).expect(403);
+    assert.match(profile.body.message, /demo account/);
+
+    await agent
+      .patch("/api/auth/password")
+      .send({ currentPassword: "password123", newPassword: "newpassword1" })
+      .expect(403);
   });
 });

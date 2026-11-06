@@ -32,4 +32,8 @@ module.exports = {
     .filter(Boolean),
   COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE || "lax",
   TRUST_PROXY: parseTrustProxy(process.env.TRUST_PROXY),
+  // shared demo login, see scripts/seed.js
+  DEMO_EMAIL: (process.env.DEMO_EMAIL || "demo@tasknix.app").toLowerCase(),
+  DEMO_PASSWORD: process.env.DEMO_PASSWORD || "demo1234",
+  RESET_DEMO_ON_START: process.env.RESET_DEMO_ON_START === "true",
 };

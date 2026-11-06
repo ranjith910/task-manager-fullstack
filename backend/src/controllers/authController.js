@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const env = require("../config/env");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const { setAuthCookie, clearAuthCookie } = require("../utils/token");
@@ -12,6 +13,13 @@ const emailTakenError = () =>
     { field: "email", message: "This email is already in use" },
   ]);
 
+// the public demo login is shared, so nobody should be able to lock others out of it
+const ensureNotDemoAccount = (user) => {
+  if (user.email === env.DEMO_EMAIL) {
+    throw new AppError(403, "The demo account can't be changed. Sign up to try this.");
+  }
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -22,7 +30,7 @@ const register = async (req, res) => {
 
   const user = await User.create({ name, email, password });
 
-  setAuthCookie(res, user._id);
+  setAuthCookie(res, user);
   res.status(201).json({ success: true, message: "Account created", data: user });
 };
 
@@ -41,7 +49,7 @@ const login = async (req, res) => {
     throw new AppError(401, "Invalid email or password");
   }
 
-  setAuthCookie(res, user._id);
+  setAuthCookie(res, user);
   res.status(200).json({ success: true, message: "Logged in", data: user });
 };
 
@@ -64,6 +72,7 @@ const getMe = (req, res) => {
 // @route   PATCH /api/auth/me
 // @access  Private
 const updateMe = async (req, res) => {
+  ensureNotDemoAccount(req.user);
   const updates = req.validated.body;
 
   if (updates.email && updates.email !== req.user.email) {
@@ -80,6 +89,7 @@ const updateMe = async (req, res) => {
 // @route   PATCH /api/auth/password
 // @access  Private
 const changePassword = async (req, res) => {
+  ensureNotDemoAccount(req.user);
   const { currentPassword, newPassword } = req.validated.body;
 
   const user = await User.findById(req.user._id).select("+password");
@@ -90,12 +100,10 @@ const changePassword = async (req, res) => {
   }
 
   user.password = newPassword;
-  // JWT iat only has second precision, so set this 1s in the past to keep
-  // the new token below valid while older tokens get rejected
-  user.passwordChangedAt = new Date(Date.now() - 1000);
+  user.tokenVersion += 1; // every token issued before this stops working
   await user.save();
 
-  setAuthCookie(res, user._id);
+  setAuthCookie(res, user);
   res.status(200).json({ success: true, message: "Password updated" });
 };
 

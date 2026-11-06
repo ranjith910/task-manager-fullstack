@@ -13,11 +13,11 @@ const email = z
   .max(254, "Email is too long")
   .pipe(z.email("Please provide a valid email"));
 
-// bcrypt ignores anything after 72 bytes, so cap it there
+// bcrypt ignores anything after 72 bytes (not characters, emoji etc. take more than one)
 const password = z
   .string("Password is required")
   .min(8, "Password must be at least 8 characters")
-  .max(72, "Password must be at most 72 characters")
+  .refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password is too long")
   .regex(/[A-Za-z]/, "Password must contain at least one letter")
   .regex(/\d/, "Password must contain at least one number");
 

@@ -28,6 +28,12 @@ router
   .get(protect, getMe)
   .patch(protect, validate({ body: updateProfileSchema }), updateMe);
 
-router.patch("/password", protect, validate({ body: changePasswordSchema }), changePassword);
+router.patch(
+  "/password",
+  protect,
+  authLimiter,
+  validate({ body: changePasswordSchema }),
+  changePassword,
+);
 
 module.exports = router;

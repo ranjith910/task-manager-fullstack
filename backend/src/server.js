@@ -3,9 +3,21 @@ require("dotenv").config({ quiet: true });
 const env = require("./config/env");
 const app = require("./app");
 const { connectDB, disconnectDB } = require("./config/db");
+const { resetDemoAccount } = require("./services/demoService");
 
 const startServer = async () => {
   await connectDB();
+
+  // On Render's free plan the service sleeps when idle and starts again on the next
+  // request, so this puts the public demo account back in shape every so often.
+  if (env.RESET_DEMO_ON_START) {
+    try {
+      const { email } = await resetDemoAccount();
+      console.log(`Demo account ${email} reset`);
+    } catch (err) {
+      console.error("Could not reset the demo account:", err.message);
+    }
+  }
 
   const server = app.listen(env.PORT, () => {
     console.log(`Server running on port ${env.PORT} (${env.NODE_ENV})`);

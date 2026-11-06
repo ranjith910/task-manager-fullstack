@@ -56,13 +56,15 @@ const getTasks = async (req, res) => {
   const { page, limit, sort } = req.validated.query;
   const filter = buildFilter(req.user._id, req.validated.query);
 
-  const [tasks, total] = await Promise.all([
-    Task.find(filter)
-      .sort(buildSort(sort))
-      .skip((page - 1) * limit)
-      .limit(limit),
-    Task.countDocuments(filter),
-  ]);
+  const query = Task.find(filter)
+    .sort(buildSort(sort))
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  // case-insensitive A-Z, otherwise "Zebra" would come before "apple"
+  if (sort.endsWith("title")) query.collation({ locale: "en", strength: 2 });
+
+  const [tasks, total] = await Promise.all([query, Task.countDocuments(filter)]);
 
   res.status(200).json({
     success: true,
