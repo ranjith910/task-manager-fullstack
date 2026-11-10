@@ -1,11 +1,13 @@
 {
   "info": {
     "name": "Tasknix API",
-    "description": "Run Register or Login first. Postman keeps the auth cookie for the following requests. Create task saves the new id in the taskId variable.",
+    "description": "Run Register first (or Login if the account already exists). Postman keeps the auth cookie for the other requests. Create task saves the new id in the taskId variable, and Change password updates the password variable.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "email", "value": "postman@example.com" },
+    { "key": "password", "value": "password123" },
     { "key": "taskId", "value": "" }
   ],
   "item": [
@@ -20,12 +22,24 @@
             "url": "{{baseUrl}}/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman User\",\n  \"email\": \"postman@example.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"name\": \"Postman User\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
             }
           }
         },
         {
           "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login as demo (needs pnpm seed)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -51,13 +65,26 @@
         },
         {
           "name": "Change password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('password', JSON.parse(pm.request.body.raw).newPassword);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": "{{baseUrl}}/auth/password",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newPassword456\"\n}"
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"newPassword456\"\n}"
             }
           }
         },

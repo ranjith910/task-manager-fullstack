@@ -14,7 +14,7 @@ You can sign up, keep track of your own tasks, search and filter them, see what'
 - **Tasks**: create, edit and delete (with a confirmation step), or mark a task as done with one click
 - **My Tasks**: search, filter by status/priority/overdue, sort, and paginate on the server
 - **Calendar**: month view of tasks by due date; pick a day to see its tasks or add one to it
-- **Dashboard**: live task counts, a completion chart, a recent activity feed and overdue / due today notifications
+- **Dashboard**: task counts, a completion chart, a recent activity feed and overdue / due today notifications
 - **Responsive**: on small screens the sidebar becomes a drawer and the task table turns into cards
 - Loading skeletons, empty states, error states with retry, and toast messages
 
@@ -50,16 +50,17 @@ flowchart LR
 
 In development the Vite dev server proxies `/api` to the local API, so it works the same way.
 
-Some decisions worth calling out:
+A few things I did on purpose:
 
-- **Session in an httpOnly cookie, not localStorage.** JavaScript can't read the token, so an XSS bug can't steal it. The cookie is `SameSite=Lax` and the API only accepts JSON, which covers CSRF for this app. Because the frontend proxies `/api`, the cookie is first-party, so it works in Safari too.
-- **Every task query includes the owner's id.** Requesting another user's task returns `404`, the same as a task that doesn't exist, so the API doesn't reveal which ids exist.
-- **Validation happens once, at the edge.** Zod schemas validate the body, query and params of every route and reject unknown fields. That stops clients from setting things like `user` or `role` themselves.
-- **Changing your password ends other sessions.** Each token carries the user's `tokenVersion`. A password change bumps it, so every older token stops working.
-- **The public demo account can't be hijacked.** The API refuses profile and password changes for it, and on the free hosting plan its tasks reset whenever the server wakes up.
-- **Due dates are calendar days.** They're stored as midnight UTC, and the client sends its local date for overdue checks, so "overdue" matches the user's timezone.
-- **Redux keeps responses in order.** Each list remembers the id of its latest request and ignores older responses, and effects abort requests that are no longer needed. After a create/update/delete, a `version` counter goes up and each visible page refetches.
-- **Activity is a separate collection** with a TTL index, so the feed survives task deletes and old entries clean themselves up after 90 days.
+- The JWT lives in an httpOnly cookie instead of localStorage, so injected JavaScript can't read it. The cookie is `SameSite=Lax` and the API only accepts JSON, so I didn't add a CSRF token. Since the frontend proxies `/api`, the cookie is first-party and Safari doesn't block it.
+- Every task query filters by the owner's id. Someone else's task gets the same `404` as a task that doesn't exist.
+- Requests go through Zod schemas before they reach a controller, and controllers only use the parsed values. Request bodies are strict, so sending something like `user` or `role` gets a `400`. Query strings and ids are checked too (unknown query params are just ignored), and the Mongoose schemas validate again on save.
+- Each token carries the user's `tokenVersion`. Changing the password bumps it, which logs out every other session.
+- Login attempts are limited per IP and per account, so faking `X-Forwarded-For` doesn't help with password guessing.
+- The demo account's profile and password are locked, and its tasks reset whenever the free Render instance wakes up.
+- Due dates are calendar days stored as midnight UTC. The client sends its own date for the overdue checks, so they match the user's timezone.
+- In Redux each list remembers its latest request id and drops older responses, and effects abort requests that aren't needed anymore. Any create/update/delete bumps a `version` counter and the page you're on refetches.
+- Activity has its own collection with a 90-day TTL index, so the feed still makes sense after a task is deleted.
 
 ## Running it locally
 
@@ -100,9 +101,9 @@ To show the "Try the demo account" button on the login page, copy `frontend/.env
 
 ## Tests
 
-- **API**: integration tests that send real HTTP requests through Supertest and hit a real MongoDB. They cover auth, validation, filters/sorting/pagination, stats, the activity log and, most importantly, that one user can't read or change another user's tasks. Each test file creates its own temporary database and drops it afterwards.
-- **UI**: Vitest + Testing Library tests for the task form, the login page, route guards, the Redux task slice (including the stale-response check) and the date helpers.
-- GitHub Actions runs lint, tests and the production build on every push.
+- **API**: integration tests that send real HTTP requests through Supertest and hit a real MongoDB. They cover auth, validation, filters/sorting/pagination, stats, the activity log, rate limits, the demo account and that one user can't read or change another user's tasks. Each test file creates its own temporary database and drops it afterwards.
+- **UI**: Vitest + Testing Library tests for the task form, the login page, route guards, the Redux slices (including the stale-response check and the session check) and the date helpers.
+- GitHub Actions runs lint and tests for both apps, plus the frontend build, on pushes to `main` and on pull requests.
 
 ## Project structure
 
@@ -114,7 +115,7 @@ backend/
     middleware/    auth, validation, errors, rate limits
     models/        User, Task, Activity
     routes/
-    services/      activity logging
+    services/      activity logging, demo account reset
     utils/
     validators/    zod schemas
     app.js         express app (used by the tests)

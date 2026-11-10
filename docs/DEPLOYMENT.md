@@ -53,12 +53,14 @@ The frontend calls `/api/...` on its own domain and Vercel forwards those reques
 
 ### Check `TRUST_PROXY` once
 
-The rate limiter counts requests per IP, so the API has to know which IP is the real visitor. Requests pass through Vercel and then Render's own proxies, and each one adds an entry to `X-Forwarded-For`; `TRUST_PROXY` says how many of those to skip.
+Some rate limits are per IP, so the API has to know which IP is the real visitor. Requests pass through Vercel and then Render's own proxies, each one adds an entry to `X-Forwarded-For`, and `TRUST_PROXY` says how many of those to skip.
 
 1. Look up your public IP (for example on https://ifconfig.me).
 2. Use the live site for a moment, then open the service's **Logs** in Render.
 3. Each request line starts with the IP the API saw. If it's your IP, you're done.
-4. If it's some other address (the same one for every visitor), raise `TRUST_PROXY` by one and redeploy. If several visitors show up as one address, all of them share one rate limit bucket.
+4. If it's some other address (the same one for every visitor), raise `TRUST_PROXY` by one and redeploy. Otherwise every visitor shares one rate limit bucket.
+
+This check only catches a value that is too low. The API is also reachable directly on its `onrender.com` address, where a caller can send a made up `X-Forwarded-For` and get a fresh per-IP bucket on every request. That's why failed logins are also limited per account and wrong current passwords per user, and those limits don't depend on the IP.
 
 ## Environment variables
 

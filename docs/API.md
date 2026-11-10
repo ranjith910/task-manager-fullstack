@@ -2,7 +2,7 @@
 
 Base URL: `/api` (locally `http://localhost:5000/api`).
 
-There's a ready-made Postman collection in [Tasknix.postman_collection.json](Tasknix.postman_collection.json). Import it, run **Login** (or **Register**) first, and the cookie is reused for the rest.
+There's a ready-made Postman collection in [Tasknix.postman_collection.json](Tasknix.postman_collection.json). Import it and run **Register** first (or **Login** if the account already exists). Postman keeps the cookie for the other requests. **Login as demo** needs the demo account (`pnpm seed`).
 
 All responses are JSON. Successful responses look like:
 
@@ -34,7 +34,7 @@ Routes marked **Private** return `401` without a valid session.
 | 409 | Email already registered |
 | 413 | Request body over 10kb |
 | 403 | Trying to change the shared demo account's profile or password |
-| 429 | Rate limit hit (10 failed login/register/password-change attempts per 15 min, 1000 API requests per 15 min) |
+| 429 | Rate limit hit: 10 failed login/register attempts per IP, 10 failed logins per account, 5 wrong current passwords per user (all per 15 min), or 1000 API requests per IP per 15 min |
 | 500 | Unexpected server error (details are only logged on the server) |
 
 ---
@@ -51,7 +51,7 @@ Public. Creates an account and logs the user in.
 
 - `name`: 2 to 50 characters
 - `email`: valid email, stored lowercase, must be unique
-- `password`: 8 to 72 characters, at least one letter and one number
+- `password`: at least 8 characters and at most 72 bytes (bcrypt's limit, so fewer characters if it has accents or emoji), with at least one letter A-Z and one digit
 
 Response `201`:
 
@@ -103,6 +103,8 @@ Private. Changes the password, issues a fresh cookie and invalidates every other
 ```json
 { "currentPassword": "password123", "newPassword": "newPassword456" }
 ```
+
+`newPassword` follows the same rules as `password` on register and has to be different from `currentPassword`.
 
 `400` with `errors[0].field = "currentPassword"` if the current password is wrong.
 
