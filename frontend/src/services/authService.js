@@ -1,7 +1,6 @@
 import api from "./api";
 
-// first request after the free API server has been asleep can take ~a minute
-const getMe = () => api.get("/auth/me", { timeout: 70000 }).then((res) => res.data.data);
+const getMe = () => api.get("/auth/me").then((res) => res.data.data);
 
 const login = (credentials) => api.post("/auth/login", credentials).then((res) => res.data.data);
 

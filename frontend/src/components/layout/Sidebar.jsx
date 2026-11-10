@@ -11,7 +11,7 @@ const WORKSPACE_LINKS = [
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
 ];
 
-function Sidebar({ isOpen, onClose }) {
+function Sidebar({ isOpen, onClose, closeButtonRef }) {
   const user = useSelector((state) => state.auth.user);
   const handleLogout = useLogout();
 
@@ -27,13 +27,23 @@ function Sidebar({ isOpen, onClose }) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transition-[transform,visibility] duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:visible ${
-          isOpen ? "translate-x-0 visible" : "-translate-x-full invisible"
+        id="main-menu"
+        // only a dialog while it's open as a drawer on small screens
+        role={isOpen ? "dialog" : undefined}
+        aria-modal={isOpen ? "true" : undefined}
+        aria-label={isOpen ? "Main menu" : undefined}
+        // visible right away when opening (so focus can move in), but stays visible
+        // until the slide-out animation is done when closing
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:visible ${
+          isOpen
+            ? "translate-x-0 visible transition-transform"
+            : "-translate-x-full invisible transition-[transform,visibility]"
         }`}
       >
         <div className="h-16 lg:h-20 flex items-center justify-between px-6 border-b border-gray-100">
           <Logo />
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label="Close menu"

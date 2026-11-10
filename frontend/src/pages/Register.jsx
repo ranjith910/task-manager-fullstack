@@ -9,9 +9,16 @@ import { inputClass } from "../components/ui/inputClass";
 import { register } from "../redux/slices/authSlice";
 import { toFieldErrors } from "../utils/apiError";
 import { validatePassword } from "../utils/validation";
+import { focusFirstError } from "../utils/forms";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FIELD_IDS = {
+  name: "name",
+  email: "email",
+  password: "password",
+  confirmPassword: "confirmPassword",
+};
 
 // same rules as the API, so most mistakes are caught before the request
 const validate = ({ name, email, password, confirmPassword }) => {
@@ -53,6 +60,7 @@ function Register() {
 
     const validationErrors = validate(form);
     setErrors(validationErrors);
+    focusFirstError(validationErrors, FIELD_IDS);
     if (Object.keys(validationErrors).length > 0) return;
 
     setIsSubmitting(true);
@@ -64,6 +72,7 @@ function Register() {
     } catch (err) {
       const fieldErrors = toFieldErrors(err.errors);
       setErrors(fieldErrors);
+      focusFirstError(fieldErrors, FIELD_IDS);
       if (Object.keys(fieldErrors).length === 0) setFormError(err.message);
       setIsSubmitting(false);
     }

@@ -8,10 +8,12 @@ import { FormField, PasswordInput } from "../components/ui/FormField";
 import { inputClass } from "../components/ui/inputClass";
 import { login } from "../redux/slices/authSlice";
 import { toFieldErrors } from "../utils/apiError";
+import { focusFirstError } from "../utils/forms";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL;
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD;
+const FIELD_IDS = { email: "email", password: "password" };
 
 const validate = ({ email, password }) => {
   const errors = {};
@@ -44,6 +46,7 @@ function Login() {
     } catch (err) {
       const fieldErrors = toFieldErrors(err.errors);
       setErrors(fieldErrors);
+      focusFirstError(fieldErrors, FIELD_IDS);
       if (Object.keys(fieldErrors).length === 0) setFormError(err.message);
       setIsSubmitting(false);
     }
@@ -55,6 +58,7 @@ function Login() {
 
     const validationErrors = validate(form);
     setErrors(validationErrors);
+    focusFirstError(validationErrors, FIELD_IDS);
     if (Object.keys(validationErrors).length === 0) {
       submit({ email: form.email.trim(), password: form.password });
     }

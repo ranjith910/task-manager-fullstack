@@ -12,7 +12,12 @@ import ErrorState from "../components/ui/ErrorState";
 import RefreshError from "../components/ui/RefreshError";
 import useTaskActions from "../hooks/useTaskActions";
 import useDocumentTitle from "../hooks/useDocumentTitle";
-import { fetchRecentTasks, resetFilters, showTasks } from "../redux/slices/taskSlice";
+import {
+  fetchRecentTasks,
+  fetchTaskStats,
+  resetFilters,
+  showTasks,
+} from "../redux/slices/taskSlice";
 import { fetchActivity } from "../redux/slices/activitySlice";
 
 function Dashboard() {
@@ -41,12 +46,13 @@ function Dashboard() {
 
   const data = stats.data;
   const statsLoading = !data && stats.status !== "failed";
+  const statsFailed = !data && stats.status === "failed";
 
   const cards = [
     {
       title: "Total Tasks",
       value: data?.total,
-      description: `${data?.byStatus.Pending ?? 0} still pending`,
+      description: data ? `${data.byStatus.Pending} still pending` : "",
       icon: ListTodo,
       iconBg: "bg-indigo-50",
       iconColor: "text-indigo-600",
@@ -55,7 +61,7 @@ function Dashboard() {
     {
       title: "Completed",
       value: data?.byStatus.Completed,
-      description: `${data?.completionRate ?? 0}% of all tasks`,
+      description: data ? `${data.completionRate}% of all tasks` : "",
       icon: CheckCircle2,
       iconBg: "bg-green-50",
       iconColor: "text-green-600",
@@ -73,7 +79,11 @@ function Dashboard() {
     {
       title: "Overdue",
       value: data?.overdue,
-      description: data?.dueToday ? `${data.dueToday} more due today` : "past their due date",
+      description: !data
+        ? ""
+        : data.dueToday
+          ? `${data.dueToday} more due today`
+          : "past their due date",
       icon: AlertCircle,
       iconBg: "bg-red-50",
       iconColor: "text-red-600",
@@ -85,6 +95,14 @@ function Dashboard() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
+      {statsFailed && (
+        <RefreshError
+          className=""
+          message="Couldn't load your task counts."
+          onRetry={() => dispatch(fetchTaskStats())}
+        />
+      )}
+
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
         {cards.map(({ filters, ...card }) => (
           <StatCard

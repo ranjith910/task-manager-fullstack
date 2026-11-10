@@ -9,9 +9,17 @@ import { createTask, updateTask } from "../../redux/slices/taskSlice";
 import { TASK_PRIORITIES, TASK_STATUSES } from "../../utils/constants";
 import { dueDateString } from "../../utils/dates";
 import { toFieldErrors } from "../../utils/apiError";
+import { focusFirstError } from "../../utils/forms";
 
 const TITLE_MAX = 100;
 const DESCRIPTION_MAX = 1000;
+const FIELD_IDS = {
+  title: "task-title",
+  description: "task-description",
+  dueDate: "task-due-date",
+  priority: "task-priority",
+  status: "task-status",
+};
 
 const validate = (form) => {
   const errors = {};
@@ -52,6 +60,7 @@ function TaskFormModal({ task, defaultDueDate = "", onClose }) {
 
     const validationErrors = validate(form);
     setErrors(validationErrors);
+    focusFirstError(validationErrors, FIELD_IDS);
     if (Object.keys(validationErrors).length > 0) return;
 
     const payload = { ...form, title: form.title.trim(), description: form.description.trim() };
@@ -68,6 +77,7 @@ function TaskFormModal({ task, defaultDueDate = "", onClose }) {
       onClose();
     } catch (err) {
       setErrors(toFieldErrors(err.errors));
+      focusFirstError(toFieldErrors(err.errors), FIELD_IDS);
       toast.error(err.message || "Couldn't save the task");
       setIsSubmitting(false);
     }

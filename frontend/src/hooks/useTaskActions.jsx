@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import TaskFormModal from "../components/tasks/TaskFormModal";
@@ -21,6 +21,10 @@ export default function useTaskActions() {
 
   const openEdit = (task) => setFormState({ task });
 
+  // ids with a toggle request in flight. The task prop only updates once the request
+  // finishes, so a quick second click would otherwise send the same change again.
+  const togglingIds = useRef(new Set());
+
   const confirmDelete = async () => {
     setIsDeleting(true);
     try {
@@ -28,19 +32,29 @@ export default function useTaskActions() {
       toast.success("Task deleted");
       setTaskToDelete(null);
     } catch (err) {
-      toast.error(err.message || "Couldn't delete the task");
+      if (err.status === 404) {
+        toast.error("That task was already deleted");
+        setTaskToDelete(null);
+      } else {
+        toast.error(err.message || "Couldn't delete the task");
+      }
     } finally {
       setIsDeleting(false);
     }
   };
 
   const toggleComplete = async (task) => {
+    if (togglingIds.current.has(task.id)) return;
+    togglingIds.current.add(task.id);
+
     const status = task.status === "Completed" ? "Pending" : "Completed";
     try {
       await dispatch(updateTask({ id: task.id, changes: { status } })).unwrap();
       toast.success(status === "Completed" ? "Task completed" : "Task moved back to pending");
     } catch (err) {
       toast.error(err.message || "Couldn't update the task");
+    } finally {
+      togglingIds.current.delete(task.id);
     }
   };
 

@@ -9,9 +9,16 @@ import { changePassword, updateProfile } from "../redux/slices/authSlice";
 import { toFieldErrors } from "../utils/apiError";
 import { formatDate } from "../utils/dates";
 import { validatePassword } from "../utils/validation";
+import { focusFirstError } from "../utils/forms";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PROFILE_FIELDS = { name: "profile-name", email: "profile-email" };
+const PASSWORD_FIELDS = {
+  currentPassword: "current-password",
+  newPassword: "new-password",
+  confirmPassword: "confirm-password",
+};
 
 function SettingsCard({ title, description, children }) {
   return (
@@ -52,6 +59,7 @@ function ProfileForm({ disabled }) {
     if (form.name.trim().length < 2) validationErrors.name = "Name must be at least 2 characters";
     if (!EMAIL_PATTERN.test(form.email.trim())) validationErrors.email = "Enter a valid email";
     setErrors(validationErrors);
+    focusFirstError(validationErrors, PROFILE_FIELDS);
     if (Object.keys(validationErrors).length > 0) return;
 
     setIsSaving(true);
@@ -61,6 +69,7 @@ function ProfileForm({ disabled }) {
       toast.success("Profile updated");
     } catch (err) {
       setErrors(toFieldErrors(err.errors));
+      focusFirstError(toFieldErrors(err.errors), PROFILE_FIELDS);
       toast.error(err.message);
     } finally {
       setIsSaving(false);
@@ -146,6 +155,7 @@ function PasswordForm({ disabled }) {
       validationErrors.confirmPassword = "Passwords don't match";
     }
     setErrors(validationErrors);
+    focusFirstError(validationErrors, PASSWORD_FIELDS);
     if (Object.keys(validationErrors).length > 0) return;
 
     setIsSaving(true);
@@ -157,6 +167,7 @@ function PasswordForm({ disabled }) {
       toast.success("Password updated. Other devices have been logged out.");
     } catch (err) {
       setErrors(toFieldErrors(err.errors));
+      focusFirstError(toFieldErrors(err.errors), PASSWORD_FIELDS);
       toast.error(err.message);
     } finally {
       setIsSaving(false);

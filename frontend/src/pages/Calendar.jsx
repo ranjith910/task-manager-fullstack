@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router";
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
@@ -10,7 +11,7 @@ import useTaskActions from "../hooks/useTaskActions";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 import { fetchCalendarTasks } from "../redux/slices/taskSlice";
 import { getMonthGrid } from "../utils/calendar";
-import { dueDateString, getTodayString, isOverdue } from "../utils/dates";
+import { dueDateString, getTodayString, isOverdue, toDateString } from "../utils/dates";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -72,17 +73,30 @@ function Calendar() {
     return groups;
   }, [items]);
 
-  const changeMonth = (offset) => {
-    setVisibleMonth(({ year, month }) => {
-      const date = new Date(year, month + offset, 1);
-      return { year: date.getFullYear(), month: date.getMonth() };
-    });
-  };
-
   const goToToday = () => {
     const date = parseDate(today);
     setVisibleMonth({ year: date.getFullYear(), month: date.getMonth() });
     setSelectedDate(today);
+  };
+
+  // the notifications link here even when we're already on this page
+  const location = useLocation();
+  const [lastLocationKey, setLastLocationKey] = useState(location.key);
+  if (location.key !== lastLocationKey) {
+    setLastLocationKey(location.key);
+    goToToday();
+  }
+
+  // keep the selected day inside the month on screen, otherwise the side panel
+  // would show (and add tasks to) a day we haven't loaded
+  const changeMonth = (offset) => {
+    const firstOfMonth = new Date(visibleMonth.year, visibleMonth.month + offset, 1);
+    const next = { year: firstOfMonth.getFullYear(), month: firstOfMonth.getMonth() };
+    setVisibleMonth(next);
+
+    const firstDay = toDateString(firstOfMonth); // "2026-12-01"
+    const isCurrentMonth = today.slice(0, 7) === firstDay.slice(0, 7);
+    setSelectedDate(isCurrentMonth ? today : firstDay);
   };
 
   const selectedTasks = tasksByDate[selectedDate] || [];

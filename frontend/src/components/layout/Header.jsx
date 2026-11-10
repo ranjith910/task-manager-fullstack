@@ -14,7 +14,7 @@ import {
 import Avatar from "../ui/Avatar";
 import useDropdown from "../../hooks/useDropdown";
 import useLogout from "../../hooks/useLogout";
-import { showTasks } from "../../redux/slices/taskSlice";
+import { fetchTaskStats, showTasks } from "../../redux/slices/taskSlice";
 
 const PAGES = {
   "/": { title: "Overview" },
@@ -23,7 +23,7 @@ const PAGES = {
   "/settings": { title: "Settings", subtitle: "Manage your profile and password." },
 };
 
-function Header({ onMenuClick }) {
+function Header({ onMenuClick, isMenuOpen, menuButtonRef }) {
   const { pathname } = useLocation();
   const user = useSelector((state) => state.auth.user);
 
@@ -34,9 +34,12 @@ function Header({ onMenuClick }) {
   return (
     <header className="sticky top-0 z-20 h-16 lg:h-20 bg-white/95 backdrop-blur border-b border-gray-200 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8">
       <button
+        ref={menuButtonRef}
         type="button"
         onClick={onMenuClick}
         aria-label="Open menu"
+        aria-expanded={isMenuOpen}
+        aria-controls="main-menu"
         className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100"
       >
         <Menu size={22} />
@@ -87,7 +90,7 @@ function HeaderSearch() {
 function Notifications() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const stats = useSelector((state) => state.tasks.stats.data);
+  const { data: stats, status } = useSelector((state) => state.tasks.stats);
   const { isOpen, close, containerRef, buttonProps, panelId } = useDropdown();
 
   const overdue = stats?.overdue ?? 0;
@@ -124,7 +127,20 @@ function Notifications() {
           className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-100 bg-white shadow-lg p-2"
         >
           <p className="px-3 py-2 text-xs font-semibold uppercase text-gray-400">Notifications</p>
-          {count === 0 ? (
+          {!stats && status === "failed" ? (
+            <div className="px-3 pb-3 text-sm text-gray-500">
+              Couldn't load notifications.{" "}
+              <button
+                type="button"
+                onClick={() => dispatch(fetchTaskStats())}
+                className="font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                Retry
+              </button>
+            </div>
+          ) : !stats ? (
+            <p className="px-3 pb-3 text-sm text-gray-500">Loading...</p>
+          ) : count === 0 ? (
             <p className="px-3 pb-3 text-sm text-gray-500">You're all caught up.</p>
           ) : (
             <>

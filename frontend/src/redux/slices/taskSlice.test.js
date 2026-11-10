@@ -86,6 +86,32 @@ describe("taskSlice requests", () => {
     expect(state.recent.items).toEqual([]);
   });
 
+  it("drops a task that no longer exists on the server (404)", () => {
+    let state = {
+      ...initial,
+      list: { ...initial.list, items: [task("1"), task("2")] },
+      calendar: { ...initial.calendar, items: [task("1")] },
+    };
+    const notFound = { status: 404, message: "Task not found" };
+
+    state = reducer(
+      state,
+      updateTask.rejected(null, "r1", { id: "1", changes: { status: "Completed" } }, notFound),
+    );
+    expect(state.list.items.map((t) => t.id)).toEqual(["2"]);
+    expect(state.calendar.items).toEqual([]);
+    expect(state.version).toBe(1);
+
+    state = reducer(state, deleteTask.rejected(null, "r2", "2", notFound));
+    expect(state.list.items).toEqual([]);
+    expect(state.version).toBe(2);
+
+    // other errors leave the lists alone
+    const before = { ...state, list: { ...state.list, items: [task("3")] } };
+    const after = reducer(before, deleteTask.rejected(null, "r3", "3", { status: 500 }));
+    expect(after.list.items.map((t) => t.id)).toEqual(["3"]);
+  });
+
   it("clears everything on logout", () => {
     const state = reducer(
       { ...initial, version: 5, list: { ...initial.list, items: [task("1")] } },

@@ -13,7 +13,7 @@ createRoot(document.getElementById("root")).render(
     <Provider store={store}>
       <BrowserRouter>
         <App />
-        <Toaster position="top-right" toastOptions={{ duration: 3000, className: "text-sm" }} />
+        <Toaster position="bottom-right" toastOptions={{ duration: 3000, className: "text-sm" }} />
       </BrowserRouter>
     </Provider>
   </StrictMode>,

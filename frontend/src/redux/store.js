@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import authReducer, { sessionExpired } from "./slices/authSlice";
 import taskReducer from "./slices/taskSlice";
 import activityReducer from "./slices/activitySlice";
-import { setUnauthorizedHandler } from "../services/api";
+import { setSlowRequestHandler, setUnauthorizedHandler } from "../services/api";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -21,4 +21,14 @@ setUnauthorizedHandler(() => {
   if (!store.getState().auth.user) return;
   store.dispatch(sessionExpired());
   toast.error("Your session has expired, please log in again");
+});
+
+setSlowRequestHandler((isSlow) => {
+  if (isSlow) {
+    toast.loading("The server is waking up, this can take up to a minute...", {
+      id: "slow-server",
+    });
+  } else {
+    toast.dismiss("slow-server");
+  }
 });

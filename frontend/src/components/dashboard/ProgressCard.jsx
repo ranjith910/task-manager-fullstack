@@ -4,10 +4,11 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 function ProgressCard({ stats, isLoading }) {
   const total = stats?.total ?? 0;
   const rate = stats?.completionRate ?? 0;
+  // stats can be missing if the request failed, show dashes rather than fake zeros
   const rows = [
-    { label: "Completed", value: stats?.byStatus.Completed ?? 0, color: "bg-green-500" },
-    { label: "In Progress", value: stats?.byStatus["In Progress"] ?? 0, color: "bg-blue-500" },
-    { label: "Pending", value: stats?.byStatus.Pending ?? 0, color: "bg-gray-300" },
+    { label: "Completed", value: stats?.byStatus.Completed, color: "bg-green-500" },
+    { label: "In Progress", value: stats?.byStatus["In Progress"], color: "bg-blue-500" },
+    { label: "Pending", value: stats?.byStatus.Pending, color: "bg-gray-300" },
   ];
 
   return (
@@ -43,7 +44,7 @@ function ProgressCard({ stats, isLoading }) {
             {isLoading ? (
               <div className="h-8 w-14 rounded bg-gray-100 animate-pulse" />
             ) : (
-              <span className="text-3xl font-bold text-gray-800">{rate}%</span>
+              <span className="text-3xl font-bold text-gray-800">{stats ? `${rate}%` : "-"}</span>
             )}
             <span className="text-xs text-gray-400 mt-1">Completed</span>
           </div>
@@ -58,7 +59,7 @@ function ProgressCard({ stats, isLoading }) {
                 <span className={`w-2.5 h-2.5 rounded-full ${row.color}`} />
                 {row.label}
               </span>
-              <span className="font-semibold text-gray-700">{row.value}</span>
+              <span className="font-semibold text-gray-700">{row.value ?? "-"}</span>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
               <div

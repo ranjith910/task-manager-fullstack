@@ -97,6 +97,12 @@ const addFetchCases = (builder, thunk, key, saveResult) => {
 
 const TASK_LISTS = ["list", "recent", "calendar"];
 
+const removeTask = (state, id) => {
+  for (const key of TASK_LISTS) {
+    state[key].items = state[key].items.filter((task) => task.id !== id);
+  }
+};
+
 const taskSlice = createSlice({
   name: "tasks",
   initialState,
@@ -144,8 +150,20 @@ const taskSlice = createSlice({
         }
       })
       .addCase(deleteTask.fulfilled, (state, action) => {
-        for (const key of TASK_LISTS) {
-          state[key].items = state[key].items.filter((task) => task.id !== action.payload);
+        removeTask(state, action.payload);
+      })
+      // 404 = the task is already gone (deleted in another tab, demo data reset...),
+      // so drop it here as well instead of leaving a row that can't be used
+      .addCase(updateTask.rejected, (state, action) => {
+        if (action.payload?.status === 404) {
+          removeTask(state, action.meta.arg.id);
+          state.version += 1;
+        }
+      })
+      .addCase(deleteTask.rejected, (state, action) => {
+        if (action.payload?.status === 404) {
+          removeTask(state, action.meta.arg);
+          state.version += 1;
         }
       })
       .addMatcher(
