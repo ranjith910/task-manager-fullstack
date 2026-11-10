@@ -1,26 +1,52 @@
 const { rateLimit } = require("express-rate-limit");
 const env = require("../config/env");
 
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+
+// off in tests, except in the test file that checks the limits themselves
+const skip = () => env.isTest && process.env.TEST_RATE_LIMITS !== "true";
+
+const limiter = (options) =>
+  rateLimit({
+    windowMs: FIFTEEN_MINUTES,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skip,
+    ...options,
+  });
+
 // each page view is a few requests, and every change refetches what's on screen
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const apiLimiter = limiter({
   limit: 1000,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  skip: () => env.isTest,
   message: { success: false, message: "Too many requests, please try again later" },
 });
 
-// login/register only. successful logins don't count towards the limit,
-// so it only really slows down password guessing.
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+// Login and register, per IP. Only failed requests count, so normal use never gets near it.
+const authLimiter = limiter({
   limit: 10,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
   skipSuccessfulRequests: true,
-  skip: () => env.isTest,
   message: { success: false, message: "Too many attempts, please try again in 15 minutes" },
 });
 
-module.exports = { apiLimiter, authLimiter };
+// Failed logins per account. The IP can be faked by calling the API directly with a made up
+// X-Forwarded-For header, the email can't, so this caps password guessing on one account.
+const loginAccountLimiter = limiter({
+  limit: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) =>
+    typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "",
+  message: {
+    success: false,
+    message: "Too many failed logins for this account, please try again in 15 minutes",
+  },
+});
+
+// wrong current password attempts, per logged in user (runs after protect)
+const passwordChangeLimiter = limiter({
+  limit: 5,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => req.user.id,
+  message: { success: false, message: "Too many attempts, please try again in 15 minutes" },
+});
+
+module.exports = { apiLimiter, authLimiter, loginAccountLimiter, passwordChangeLimiter };

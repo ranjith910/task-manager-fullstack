@@ -1,10 +1,17 @@
 // This has to run before the app is loaded so config/env.js picks it up.
-// node --test runs every file in its own process, so each file gets its own db.
-const baseUri = process.env.MONGO_URI_TEST || "mongodb://127.0.0.1:27017/tasknix_test";
+// MONGO_URI_TEST can come from the shell or backend/.env. Only that one value is read
+// from the file, so the tests can never touch the dev database in MONGO_URI.
+const fromEnvFile = {};
+require("dotenv").config({ quiet: true, processEnv: fromEnvFile });
+
 process.env.NODE_ENV = "test";
-process.env.MONGO_URI = `${baseUri}_${process.pid}`;
+process.env.MONGO_URI =
+  process.env.MONGO_URI_TEST || fromEnvFile.MONGO_URI_TEST || "mongodb://127.0.0.1:27017";
 process.env.JWT_SECRET = "test-secret-that-is-long-enough-for-the-tests";
 process.env.JWT_EXPIRES_IN = "1h";
+
+// node --test runs every file in its own process, so each file gets its own database
+const dbName = `tasknix_test_${process.pid}`;
 
 const { before, afterEach, after } = require("node:test");
 const mongoose = require("mongoose");
@@ -12,7 +19,7 @@ const request = require("supertest");
 const app = require("../src/app");
 
 before(async () => {
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(process.env.MONGO_URI, { dbName });
   // build the unique email index before any test depends on it
   await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
 });
